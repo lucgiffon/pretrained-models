@@ -59,7 +59,7 @@ model.add(Dense(1024, kernel_regularizer=keras.regularizers.l2(weight_decay), ke
 model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(Dropout(dropout))
-model.add(Dense(10, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='predictions_cifa10'))
+model.add(Dense(num_classes, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='predictions_cifa10'))
 model.add(BatchNormalization())
 model.add(Activation('softmax'))
 
@@ -114,7 +114,7 @@ model.fit_generator(datagen.flow(x_train, y_train,
                     validation_data=(x_test, y_test))
 
 # Save model and weights
-save_dir = Path(os.path.join(os.getcwd(), 'saved_models'))
+save_dir = Path(__file__).parent / "saved_models"
 save_dir.mkdir(exist_ok=True, parents=True)
 model_name = Path(__file__).stem + "_" + str(int(time.time())) + ".h5"
 model_path = os.path.join(save_dir, model_name)
