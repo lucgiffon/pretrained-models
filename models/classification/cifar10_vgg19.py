@@ -29,7 +29,7 @@ tf.logging.set_verbosity(tf.logging.ERROR)
 
 batch_size = 32
 num_classes = 10
-epochs = 100
+epochs = 300
 iterations = int(x_train.shape[0] / batch_size)
 dropout = 0.5
 weight_decay = 1e-4
@@ -64,7 +64,7 @@ model.add(BatchNormalization())
 model.add(Activation('softmax'))
 
 # initiate RMSprop optimizer
-opt = keras.optimizers.RMSprop(lr=0.0001, decay=1e-6)
+opt = keras.optimizers.SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
 
 # Let's train the model using RMSprop
 model.compile(loss='categorical_crossentropy',
@@ -123,5 +123,5 @@ print('Saved trained model at %s ' % model_path)
 
 # Score trained model.
 scores = model.evaluate(x_test, y_test, verbose=1)
-print('Test loss:', scores[0])
-print('Test accuracy:', scores[1])
+print('{} Test loss: {}'.format(__file__, scores[0]))
+print('{} Test accuracy: {}'.format(__file__, scores[1]))

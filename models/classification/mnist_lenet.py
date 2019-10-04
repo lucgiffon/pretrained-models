@@ -120,5 +120,5 @@ print('Saved trained model at %s ' % model_path)
 
 # Score trained model.
 scores = model.evaluate(x_test, y_test, verbose=1)
-print('Test loss:', scores[0])
-print('Test accuracy:', scores[1])
+print('{} Test loss: {}'.format(__file__, scores[0]))
+print('{} Test accuracy: {}'.format(__file__, scores[1]))
