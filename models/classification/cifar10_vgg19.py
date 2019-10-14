@@ -6,28 +6,32 @@ where the input comes from memory.
 """
 
 import tensorflow as tf
-import os
 import time
 from pathlib import Path
 
 import keras
-from keras import Sequential
-from keras.initializers import he_normal
-from keras.layers import Flatten, Dense, BatchNormalization, Activation, Dropout
+from keras.callbacks import LearningRateScheduler, TensorBoard
 from keras.preprocessing.image import ImageDataGenerator
 from keras.datasets import cifar10
+import numpy as np
+
+from conv_vgg19 import VGG19
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 
+def scheduler(epoch):
+    if epoch < 80:
+        return 0.1
+    if epoch < 160:
+        return 0.01
+    return 0.001
+
 # Preparing the dataset and parameters#########################
-
-
 
 (x_train, y_train), (x_test, y_test) = cifar10.load_data()
 
-
-batch_size = 32
+batch_size = 128
 num_classes = 10
 epochs = 300
 iterations = int(x_train.shape[0] / batch_size)
@@ -36,35 +40,31 @@ weight_decay = 1e-4
 
 x_train = x_train.astype('float32')
 x_test = x_test.astype('float32')
-x_train /= 255
-x_test /= 255
+mean_x_train = np.mean(x_train, axis=(0, 1, 2))
+std_x_train = np.std(x_train, axis=(0, 1, 2))
+x_train -= mean_x_train
+x_train /= std_x_train
+mean_x_test = np.mean(x_test, axis=(0, 1, 2))
+std_x_test = np.std(x_test, axis=(0, 1, 2))
+x_test -= mean_x_test
+x_test /= std_x_test
 
 # Convert class vectors to binary class matrices.
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
-# Build model fromm keras vgg19 implementation
-vgg19_model = keras.applications.vgg19.VGG19(include_top=False, weights=None, input_shape=x_train.shape[1:], pooling=None)
-model = Sequential()
-for layer in vgg19_model.layers:
-    model.add(layer)
+model_base_name = Path(__file__).stem + "_" + str(int(time.time()))
+# important note: we do not use vgg19 from keras application because training from scratch for the cifar10 task doesn't provide satisfying results.
+# Because it doesn't contain batchnorm layer nor kernel regularizers in convolution blocks. This is why we use this custom VGG19 function.
+# vgg19_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=x_train.shape[1:], pooling=None)
+model = VGG19(input_shape=x_train.shape[1:], num_classes=num_classes, dropout=dropout, weight_decay=weight_decay)
 
 # Add dense layers on top of convolution
-model.add(Flatten(name='flatten'))
-model.add(Dense(2048, use_bias = True, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc1'))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-model.add(Dropout(dropout))
-model.add(Dense(1024, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc2'))
-model.add(BatchNormalization())
-model.add(Activation('relu'))
-model.add(Dropout(dropout))
-model.add(Dense(num_classes, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='predictions_cifa10'))
-model.add(BatchNormalization())
-model.add(Activation('softmax'))
 
 # initiate RMSprop optimizer
-opt = keras.optimizers.SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
+opt = keras.optimizers.SGD(lr=0.1, momentum=0.9, nesterov=True)
+# opt = keras.optimizers.RMSprop(lr=0.0001)
+# opt = keras.optimizers.Adam(lr=0.001)
 
 # Let's train the model using RMSprop
 model.compile(loss='categorical_crossentropy',
@@ -73,51 +73,39 @@ model.compile(loss='categorical_crossentropy',
 
 print('Using real-time data augmentation.')
 # This will do preprocessing and realtime data augmentation:
-datagen = ImageDataGenerator(
-    featurewise_center=False,  # set input mean to 0 over the dataset
-    samplewise_center=False,  # set each sample mean to 0
-    featurewise_std_normalization=False,  # divide inputs by std of the dataset
-    samplewise_std_normalization=False,  # divide each input by its std
-    zca_whitening=False,  # apply ZCA whitening
-    zca_epsilon=1e-06,  # epsilon for ZCA whitening
-    rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
-    # randomly shift images horizontally (fraction of total width)
-    width_shift_range=0.1,
-    # randomly shift images vertically (fraction of total height)
-    height_shift_range=0.1,
-    shear_range=0.,  # set range for random shear
-    zoom_range=0.,  # set range for random zoom
-    channel_shift_range=0.,  # set range for random channel shifts
-    # set mode for filling points outside the input boundaries
-    fill_mode='nearest',
-    cval=0.,  # value used for fill_mode = "constant"
-    horizontal_flip=True,  # randomly flip images
-    vertical_flip=False,  # randomly flip images
-    # set rescaling factor (applied before any other transformation)
-    rescale=None,
-    # set function that will be applied on each input
-    preprocessing_function=None,
-    # image data format, either "channels_first" or "channels_last"
-    data_format=None,
-    # fraction of images reserved for validation (strictly between 0 and 1)
-    validation_split=0.0)
 
-# Compute quantities required for feature-wise normalization
-# (std, mean, and principal components if ZCA whitening is applied).
+datagen = ImageDataGenerator(horizontal_flip=True,
+                             width_shift_range=0.125,
+                             height_shift_range=0.125,
+                             fill_mode='constant',
+                             cval=0.)
+
 datagen.fit(x_train)
+
+change_lr = LearningRateScheduler(scheduler)
+
+# disabled early stopping because it somehow lead to worse results
+# early_stop = keras.callbacks.EarlyStopping(monitor='val_loss',
+#                               min_delta=0,
+#                               patience=3,
+#                               verbose=0, mode='auto')
+
+tb_cb = TensorBoard(log_dir="tb_{}".format(model_base_name), histogram_freq=0)
 
 # Fit the model on the batches generated by datagen.flow().
 model.fit_generator(datagen.flow(x_train, y_train,
                     batch_size=batch_size),
                     epochs=epochs,
                     steps_per_epoch=iterations,
-                    validation_data=(x_test, y_test))
+                    validation_data=(x_test, y_test),
+                    callbacks=[change_lr, tb_cb]
+                    )
 
 # Save model and weights
 save_dir = Path(__file__).parent / "saved_models"
 save_dir.mkdir(exist_ok=True, parents=True)
-model_name = Path(__file__).stem + "_" + str(int(time.time())) + ".h5"
-model_path = os.path.join(save_dir, model_name)
+model_name = model_base_name + ".h5"
+model_path = save_dir / model_name
 model.save(model_path)
 print('Saved trained model at %s ' % model_path)
 
