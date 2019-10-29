@@ -14,7 +14,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.utils.data_utils import get_file
 
 
-def VGG19(input_shape, num_classes, dropout=0.5, weight_decay=1e-4):
+def VGG19(input_shape, num_classes, size_denses=4096, dropout=0.5, weight_decay=1e-4):
     model = Sequential()
 
     # Block 1
@@ -81,11 +81,11 @@ def VGG19(input_shape, num_classes, dropout=0.5, weight_decay=1e-4):
     model.add(MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool'))
 
     model.add(Flatten(name='flatten'))
-    model.add(Dense(4096, use_bias=True, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc1'))
+    model.add(Dense(size_denses, use_bias=True, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc1'))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dropout(dropout))
-    model.add(Dense(4096, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc2'))
+    model.add(Dense(size_denses, kernel_regularizer=keras.regularizers.l2(weight_decay), kernel_initializer=he_normal(), name='fc2'))
     model.add(BatchNormalization())
     model.add(Activation('relu'))
     model.add(Dropout(dropout))

@@ -20,6 +20,7 @@ from conv_vgg19 import VGG19
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
+SIZE_DENSE = 2048
 
 def scheduler(epoch):
     if epoch < 80:
@@ -58,8 +59,8 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 # Build model fromm keras vgg19 implementation
-model_base_name = Path(__file__).stem + "_" + str(int(time.time()))
-model = VGG19(input_shape=x_train.shape[1:], num_classes=num_classes, dropout=dropout, weight_decay=weight_decay)
+model_base_name = Path(__file__).stem + "_" + "{}x{}".format(SIZE_DENSE, SIZE_DENSE) + "_" + str(int(time.time()))
+model = VGG19(size_denses=SIZE_DENSE, input_shape=x_train.shape[1:], num_classes=num_classes, dropout=dropout, weight_decay=weight_decay)
 
 # Add dense layers on top of convolution
 
