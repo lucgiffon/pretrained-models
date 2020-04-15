@@ -34,8 +34,17 @@ parser.add_argument('-n', '--stack_n', type=int, default=5, metavar='NUMBER',
                     help='stack number n, total layers = 6 * n + 2 (default: 5)')
 parser.add_argument('-d', '--dataset', type=str, default="cifar10", metavar='STRING',
                     help='dataset. (default: cifar10)')
+parser.add_argument('-s', '--seed', type=int, metavar='NUMBER',
+                    help='Seed number. No default.')
 
 args = parser.parse_args()
+
+if args.seed is not None:
+    from numpy.random import seed
+    seed(args.seed)
+    from tensorflow import set_random_seed
+    set_random_seed(args.seed)
+print(args.seed)
 
 stack_n = args.stack_n
 layers = 6 * stack_n + 2
@@ -90,6 +99,8 @@ def residual_network(img_input, classes_num=10, stack_n=5):
         return block
 
     # build model ( total layers = stack_n * 3 * 2 + 2 )
+    # for 20 layers: stack_n = 3
+    # for 50 layers: stack_n = 8
     # stack_n = 5 by default, total layers = 32
     # input: 32x32x3 output: 32x32x16
     x = Conv2D(filters=16, kernel_size=(3, 3), strides=(1, 1), padding='same',
@@ -180,4 +191,5 @@ if __name__ == '__main__':
                          epochs=epochs,
                          callbacks=cbks,
                          validation_data=(x_test, y_test))
-    resnet.save('resnet_{:d}_{}.h5'.format(layers, args.dataset))
+    str_seed = "" if args.seed is None else f"_{args.seed}"
+    resnet.save('resnet_{:d}_{}{}.h5'.format(layers, args.dataset, str_seed))

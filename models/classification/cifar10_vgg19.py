@@ -19,8 +19,24 @@ from conv_vgg19 import VGG19
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--seed', type=int, metavar='NUMBER',
+                    help='Seed number. No default.')
+parser.add_argument('-d', '--size-dense', type=int, metavar='NUMBER', default=2048,
+                    help='Seed number. No default.')
 
-SIZE_DENSE = 2048
+args = parser.parse_args()
+
+if args.seed is not None:
+    from numpy.random import seed
+    seed(args.seed)
+    from tensorflow import set_random_seed
+    set_random_seed(args.seed)
+
+SIZE_DENSE = args.size_dense
+
+print(args.seed, SIZE_DENSE)
 
 def scheduler(epoch):
     if epoch < 80:
@@ -55,7 +71,8 @@ x_test /= std_x_test
 y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
-model_base_name = Path(__file__).stem + "_" + "{}x{}".format(SIZE_DENSE, SIZE_DENSE) + "_" + str(int(time.time()))
+str_seed = "" if args.seed is None else f"_{args.seed}"
+model_base_name = Path(__file__).stem + "_" + "{}x{}".format(SIZE_DENSE, SIZE_DENSE) + str_seed + "_" + str(int(time.time()))
 # important note: we do not use vgg19 from keras application because training from scratch for the cifar10 task doesn't provide satisfying results.
 # Because it doesn't contain batchnorm layer nor kernel regularizers in convolution blocks. This is why we use this custom VGG19 function.
 # vgg19_model = keras.applications.vgg19.VGG19(include_top=False, weights='imagenet', input_shape=x_train.shape[1:], pooling=None)

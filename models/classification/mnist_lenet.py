@@ -20,7 +20,13 @@ from keras.datasets import mnist
 
 tf.logging.set_verbosity(tf.logging.ERROR)
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', '--seed', type=int, metavar='NUMBER',
+                    help='Seed number. No default.')
 
+args = parser.parse_args()
+print(args.seed)
 # Preparing the dataset and parameters#########################
 
 
@@ -113,7 +119,8 @@ model.fit_generator(datagen.flow(x_train, y_train,
 # Save model and weights
 save_dir = Path(__file__).parent / "saved_models"
 save_dir.mkdir(exist_ok=True, parents=True)
-model_name = Path(__file__).stem + "_" + str(int(time.time())) + ".h5"
+str_seed = "" if args.seed is None else f"_{args.seed}"
+model_name = Path(__file__).stem + str_seed + "_" + str(int(time.time())) + ".h5"
 model_path = os.path.join(save_dir, model_name)
 model.save(model_path)
 print('Saved trained model at %s ' % model_path)
