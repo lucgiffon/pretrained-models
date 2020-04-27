@@ -143,6 +143,7 @@ model.fit_generator(datagen.flow(x_train, y_train,
                     callbacks=callbacks
                     )
 
+
 # Save model and weights
 save_dir = Path(__file__).parent / "saved_models"
 save_dir.mkdir(exist_ok=True, parents=True)
